@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">Admin Dashboard</h1>
+
+        <!-- Form Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md mb-8">
+            <h2 id="form-title" class="text-xl font-semibold mb-4 text-gray-700">Add New Card</h2>
+            <form id="admin-form" class="space-y-4">
+                <input type="hidden" id="edit-doc-id">
+                <div>
+                    <label class="block text-gray-600 font-medium mb-1">Select Image</label>
+                    <input type="file" id="image-file" accept="image/*" class="w-full border p-2 rounded">
+                </div>
+                <div>
+                    <label class="block text-gray-600 font-medium mb-1">Text Description</label>
+                    <textarea id="post-text" rows="3" class="w-full border p-2 rounded" placeholder="Enter text here..." required></textarea>
+                </div>
+                <div>
+                    <label class="block text-gray-600 font-medium mb-1">Target Link (URL)</label>
+                    <input type="url" id="post-link" class="w-full border p-2 rounded" placeholder="https://example.com" required>
+                </div>
+                <button type="submit" id="submit-btn" class="w-full bg-green-600 text-white font-semibold py-2 rounded hover:bg-green-700 transition">Publish Card</button>
+            </form>
+        </div>
+
+        <!-- Manage Cards Section -->
+        <div class="bg-white p-6 rounded-lg shadow-md">
+            <h2 class="text-xl font-semibold mb-4 text-gray-700">Manage Existing Cards</h2>
+            <div id="admin-cards-list" class="space-y-4">
+                <!-- Admin Cards List -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase & Admin Script -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addSmth, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyD0OEHSls-lVvUt8L_ESM6BCnWH1mlfumk",
+            authDomain: "xjob-39339.firebaseapp.com",
+            projectId: "xjob-39339",
+            storageBucket: "xjob-39339.firebasestorage.app",
+            messagingSenderId: "338051774766",
+            appId: "1:338051774766:web:3d27bbd138f2545747e2bf"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const IMGBB_API_KEY = "6b3572dc389203765c95911b2ac150e2";
+
+        const form = document.getElementById("admin-form");
+        const submitBtn = document.getElementById("submit-btn");
+        const formTitle = document.getElementById("form-title");
+        const editDocIdInput = document.getElementById("edit-doc-id");
+
+        // Upload image to ImgBB function
+        async function uploadToImgBB(file) {
+            const formData = new FormData();
+            formData.append("image", file);
+
+            const response = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+                method: "POST",
+                body: formData
+            });
+            const data = await response.json();
+            if (data.success) {
+                return data.data.url;
+            } else {
+                throw new Error("Image upload failed");
+            }
+        }
+
+        // Handle Form Submit (Add or Update)
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Processing...";
+
+            const text = document.getElementById("post-text").value;
+            const link = document.getElementById("post-link").value;
+            const imageFile = document.getElementById("image-file").files[0];
+            const editId = editDocIdInput.value;
+
+            try {
+                let imageUrl = "";
+                if (imageFile) {
+                    imageUrl = await uploadToImgBB(imageFile);
+                }
+
+                if (editId) {
+                    // Update existing record
+                    const docRef = doc(db, "posts", editId);
+                    const updateData = { text, link, timestamp: Date.now() };
+                    if (imageUrl) updateData.imageUrl = imageUrl;
+                    
+                    await updateDoc(docRef, updateData);
+                    alert("Card updated successfully!");
+                } else {
+                    // Create new record
+                    if (!imageFile) {
+                        alert("Please select an image!");
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = "Publish Card";
+                        return;
+                    }
+                    imageUrl = await uploadToImgBB(imageFile);
+
+                    await addDoc(collection(db, "posts"), {
+                        imageUrl,
+                        text,
+                        link,
+                        timestamp: Date.now() // Naye cards ko sequence mein rakhne ke liye
+                    });
+                    alert("Card added successfully!");
+                }
+
+                form.reset();
+                editDocIdInput.value = "";
+                formTitle.textContent = "Add New Card";
+                submitBtn.textContent = "Publish Card";
+                loadAdminCards();
+            } catch (error) {
+                console.error("Error: ", error);
+                alert("Something went wrong!");
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        // Load Admin Cards for Edit/Delete
+        window.loadAdminCards = async function() {
+            const container = document.getElementById("admin-cards-list");
+            container.innerHTML = "<p>Loading...</p>";
+
+            const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+            const querySnapshot = await getDocs(q);
+
+            container.innerHTML = "";
+            if (querySnapshot.empty) {
+                container.innerHTML = "<p class='text-gray-500'>Koi card available nahi hai.</p>";
+                return;
+            }
+
+            querySnapshot.forEach((docSnap) => {
+                const post = docSnap.data();
+                const id = docSnap.id;
+
+                const itemHTML = `
+                    <div class="flex items-center justify-between border-b pb-4 gap-4">
+                        <img src="${post.imageUrl}" class="w-20 h-20 object-cover rounded">
+                        <div class="flex-grow">
+                            <p class="text-sm text-gray-800 line-clamp-2">${post.text}</p>
+                            <a href="${post.link}" target="_blank" class="text-blue-500 text-xs underline">${post.link}</a>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <button onclick="editPost('${id}', \`${post.text}\`, \`${post.link}\`)" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600">Edit</button>
+                            <button onclick="deletePost('${id}')" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">Delete</button>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += itemHTML;
+            });
+        }
+
+        // Edit Post Functionality
+        window.editPost = function(id, text, link) {
+            editDocIdInput.value = id;
+            document.getElementById("post-text").value = text;
+            document.getElementById("post-link").value = link;
+            formTitle.textContent = "Edit Card (Image optional to replace)";
+            submitBtn.textContent = "Update Card";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Delete Post Functionality
+        window.deletePost = async function(id) {
+            if (confirm("Kya aap sach mein is card ko delete karna chahte hain?")) {
+                try {
+                    await deleteDoc(doc(db, "posts", id));
+                    alert("Card deleted successfully!");
+                    loadAdminCards();
+                } catch (error) {
+                    console.error("Error deleting: ", error);
+                    alert("Delete karne mein error aaya.");
+                }
+            }
+        }
+
+        loadAdminCards();
+    </script>
+</body>
+</html>
