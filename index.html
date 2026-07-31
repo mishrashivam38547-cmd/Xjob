@@ -17,64 +17,61 @@
             <!-- Dynamic Cards Here -->
         </div>
     </div>
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    <!-- Firebase & User Script -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+    const firebaseConfig = {
+        apiKey: "AIzaSyD0OEHSls-lVvUt8L_ESM6BCnWH1mlfumk",
+        authDomain: "xjob-39339.firebaseapp.com",
+        projectId: "xjob-39339",
+        storageBucket: "xjob-39339.firebasestorage.app",
+        messagingSenderId: "338051774766",
+        appId: "1:338051774766:web:3d27bbd138f2545747e2bf"
+    };
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyD0OEHSls-lVvUt8L_ESM6BCnWH1mlfumk",
-            authDomain: "xjob-39339.firebaseapp.com",
-            projectId: "xjob-39339",
-            storageBucket: "xjob-39339.firebasestorage.app",
-            messagingSenderId: "338051774766",
-            appId: "1:338051774766:web:3d27bbd138f2545747e2bf"
-        };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+    async function loadUserCards() {
+        const container = document.getElementById("user-cards-container");
+        container.innerHTML = "<p class='text-center col-span-full'>Loading...</p>";
 
-        async function loadUserCards() {
-            const container = document.getElementById("user-cards-container");
-            container.innerHTML = "<p class='text-center col-span-full'>Loading...</p>";
-
-            try {
-                // Latest post upar dikhane ke liye timestamp ke hisaab se descending order
-                const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
-                const querySnapshot = await getDocs(q);
-                
-                container.innerHTML = "";
-                if (querySnapshot.empty) {
-                    container.innerHTML = "<p class='text-center col-span-full text-gray-500'>Koi post available nahi hai.</p>";
-                    return;
-                }
-
-                querySnapshot.forEach((doc) => {
-                    const post = doc.data();
-                    const cardHTML = `
-                        <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col justify-between">
-                            <img src="${post.imageUrl}" alt="Image" class="w-full h-48 object-cover">
-                            <div class="p-4 flex-grow">
-                                <p class="text-gray-700 text-base mb-4">${post.text}</p>
-                            </div>
-                            <div class="p-4 bg-gray-50 border-t">
-                                <a href="${post.link}" target="_blank" class="block w-full text-center bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700 transition">
-                                    Visit Link
-                                 </a>
-                            </div>
-                        </div>
-                    `;
-                    container.innerHTML += cardHTML;
-                });
-            } catch (error) {
-                console.error("Error loading posts: ", error);
-                container.innerHTML = "<p class='text-center col-span-full text-red-500'>Error loading data.</p>";
+        try {
+            // Bina orderBy ke data fetch kar rahe hain taaki error na aaye
+            const querySnapshot = await getDocs(collection(db, "posts"));
+            
+            container.innerHTML = "";
+            if (querySnapshot.empty) {
+                container.innerHTML = "<p class='text-center col-span-full text-gray-500'>Koi post available nahi hai.</p>";
+                return;
             }
-        }
 
-        loadUserCards();
-    </script>
+            querySnapshot.forEach((doc) => {
+                const post = doc.data();
+                const cardHTML = `
+                    <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col justify-between border">
+                        <img src="${post.imageUrl}" alt="Image" class="w-full h-48 object-cover">
+                        <div class="p-4 flex-grow">
+                            <p class="text-gray-700 text-base mb-4">${post.text}</p>
+                        </div>
+                        <div class="p-4 bg-gray-50 border-t">
+                            <a href="${post.link}" target="_blank" class="block w-full text-center bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700 transition">
+                                Visit Link
+                             </a>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cardHTML;
+            });
+        } catch (error) {
+            console.error("Error loading posts: ", error);
+            container.innerHTML = "<p class='text-center col-span-full text-red-500'>Error loading data.</p>";
+        }
+    }
+
+    loadUserCards();
+</script>
 </body>
 </html>
 
