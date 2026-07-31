@@ -4,74 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Professional Blog / Updates</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 3D Perspective aur Card Transition */
+        .card-wrapper {
+            perspective: 1000px;
+        }
+        .card-3d {
+            transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1), box-shadow 0.4s ease;
+            transform-style: preserve-3d;
+        }
+        .card-3d:hover {
+            transform: translateY(-8px) rotateX(4deg) rotateY(4deg) scale(1.02);
+            box-shadow: 0 20px 30px -10px rgba(220, 38, 38, 0.3);
+        }
+    </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
+<body class="bg-black min-h-screen text-white">
 
     <div class="container mx-auto px-4 py-8">
-        <h1 class="text-3xl font-bold text-center mb-8 text-gray-800">Latest Updates</h1>
+        <h1 class="text-3xl font-bold text-center mb-8 text-white tracking-wider">Latest Updates</h1>
         
         <!-- Cards Container -->
-        <div id="user-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div id="user-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 pt-4">
             <!-- Dynamic Cards Here -->
         </div>
     </div>
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-    import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyD0OEHSls-lVvUt8L_ESM6BCnWH1mlfumk",
-        authDomain: "xjob-39339.firebaseapp.com",
-        projectId: "xjob-39339",
-        storageBucket: "xjob-39339.firebasestorage.app",
-        messagingSenderId: "338051774766",
-        appId: "1:338051774766:web:3d27bbd138f2545747e2bf"
-    };
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
+        const firebaseConfig = {
+            apiKey: "AIzaSyD0OEHSls-lVvUt8L_ESM6BCnWH1mlfumk",
+            authDomain: "xjob-39339.firebaseapp.com",
+            projectId: "xjob-39339",
+            storageBucket: "xjob-39339.firebasestorage.app",
+            messagingSenderId: "338051774766",
+            appId: "1:338051774766:web:3d27bbd138f2545747e2bf"
+        };
 
-    async function loadUserCards() {
-        const container = document.getElementById("user-cards-container");
-        container.innerHTML = "<p class='text-center col-span-full'>Loading...</p>";
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
 
-        try {
-            // Bina orderBy ke data fetch kar rahe hain taaki error na aaye
-            const querySnapshot = await getDocs(collection(db, "posts"));
-            
-            container.innerHTML = "";
-            if (querySnapshot.empty) {
-                container.innerHTML = "<p class='text-center col-span-full text-gray-500'>Koi post available nahi hai.</p>";
-                return;
+        async function loadUserCards() {
+            const container = document.getElementById("user-cards-container");
+            container.innerHTML = "<p class='text-center col-span-full'>Loading...</p>";
+
+            try {
+                const querySnapshot = await getDocs(collection(db, "posts"));
+                container.innerHTML = "";
+                
+                if (querySnapshot.empty) {
+                    container.innerHTML = "<p class='text-center col-span-full text-gray-400'>Koi post available nahi hai.</p>";
+                    return;
+                }
+
+                querySnapshot.forEach((doc) => {
+                    const post = doc.data();
+                    const cardHTML = `
+                        <div class="card-wrapper">
+                            <div class="card-3d bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden flex flex-col justify-between h-full shadow-lg">
+                                <div class="overflow-hidden">
+                                    <img src="${post.imageUrl}" alt="Image" class="w-full h-48 object-cover transition-transform duration-500 hover:scale-110">
+                                </div>
+                                <div class="p-5 flex-grow">
+                                    <p class="text-white text-base leading-relaxed">${post.text}</p>
+                                </div>
+                                <div class="p-4 bg-neutral-900 border-t border-neutral-800">
+                                    <a href="${post.link}" target="_blank" class="block w-full text-center bg-red-600 text-white font-semibold py-2.5 rounded-lg hover:bg-red-700 transition duration-300 shadow-md">
+                                        Visit Link
+                                     </a>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.innerHTML += cardHTML;
+                });
+            } catch (error) {
+                console.error("Error loading posts: ", error);
+                container.innerHTML = "<p class='text-center col-span-full text-red-500'>Error loading data.</p>";
             }
-
-            querySnapshot.forEach((doc) => {
-                const post = doc.data();
-                const cardHTML = `
-                    <div class="bg-white rounded-lg shadow-md overflow-hidden flex flex-col justify-between border">
-                        <img src="${post.imageUrl}" alt="Image" class="w-full h-48 object-cover">
-                        <div class="p-4 flex-grow">
-                            <p class="text-gray-700 text-base mb-4">${post.text}</p>
-                        </div>
-                        <div class="p-4 bg-gray-50 border-t">
-                            <a href="${post.link}" target="_blank" class="block w-full text-center bg-blue-600 text-white font-semibold py-2 rounded hover:bg-blue-700 transition">
-                                Visit Link
-                             </a>
-                        </div>
-                    </div>
-                `;
-                container.innerHTML += cardHTML;
-            });
-        } catch (error) {
-            console.error("Error loading posts: ", error);
-            container.innerHTML = "<p class='text-center col-span-full text-red-500'>Error loading data.</p>";
         }
-    }
 
-    loadUserCards();
-</script>
+        loadUserCards();
+    </script>
 </body>
 </html>
-
